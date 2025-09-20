@@ -1,0 +1,123 @@
+-- Mini Kaiju Hub
+-- Versão: 1.0
+-- Script para Kaiju Paradise com ESP por time
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- GUI principal
+local ScreenGui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+ScreenGui.Name = "KaijuHubGUI"
+
+local MainButton = Instance.new("TextButton", ScreenGui)
+MainButton.Size = UDim2.new(0, 50, 0, 50)
+MainButton.Position = UDim2.new(0, 10, 0.5, -25)
+MainButton.Text = "≡"
+MainButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainButton.TextColor3 = Color3.new(1,1,1)
+MainButton.Font = Enum.Font.SourceSansBold
+MainButton.TextScaled = true
+MainButton.BorderSizePixel = 0
+
+local Frame = Instance.new("Frame", ScreenGui)
+Frame.Size = UDim2.new(0, 200, 0, 150)
+Frame.Position = UDim2.new(0, 70, 0.5, -75)
+Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Frame.Visible = false
+Frame.BorderSizePixel = 0
+
+-- Função para criar toggles
+local function createToggle(name, default)
+    local btn = Instance.new("TextButton", Frame)
+    btn.Size = UDim2.new(0, 180, 0, 30)
+    btn.Position = UDim2.new(0, 10, 0, (#Frame:GetChildren()-1)*35)
+    btn.Text = name .. ": " .. (default and "ON" or "OFF")
+    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.Font = Enum.Font.SourceSans
+    btn.TextScaled = true
+    btn.BorderSizePixel = 0
+
+    local state = default
+    btn.MouseButton1Click:Connect(function()
+        state = not state
+        btn.Text = name .. ": " .. (state and "ON" or "OFF")
+    end)
+    return function() return state end
+end
+
+local espEnemiesToggle = createToggle("ESP Inimigos", false)
+local espItemsToggle = createToggle("ESP Itens", false)
+local noclipToggle = createToggle("Noclip", false)
+
+-- Mostrar/ocultar GUI
+MainButton.MouseButton1Click:Connect(function()
+    Frame.Visible = not Frame.Visible
+end)
+
+-- Função para criar caixa ESP
+local function createBox(part, color)
+    local box = Instance.new("BoxHandleAdornment")
+    box.Adornee = part
+    box.Size = part.Size
+    box.Color3 = color
+    box.Transparency = 0.5
+    box.AlwaysOnTop = true
+    box.ZIndex = 10
+    box.Name = "ESPBox"
+    box.Parent = part
+    return box
+end
+
+-- Atualização do ESP a cada frame
+RunService.RenderStepped:Connect(function()
+    -- Noclip
+    if noclipToggle() then
+        for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end
+
+    -- ESP Inimigos por time
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local color
+            if player.Team == game.Teams.Red then
+                color = Color3.fromRGB(255, 0, 0) -- Vermelho
+            elseif player.Team == game.Teams.Blue then
+                color = Color3.fromRGB(0, 0, 255) -- Azul
+            else
+                color = Color3.fromRGB(0, 255, 0) -- Outros times
+            end
+
+            local box = player.Character:FindFirstChild("ESPBox")
+            if espEnemiesToggle() then
+                if not box then
+                    createBox(player.Character.HumanoidRootPart, color)
+                else
+                    box.Color3 = color
+                end
+            else
+                if box then box:Destroy() end
+            end
+        end
+    end
+
+    -- ESP Itens
+    for _, item in pairs(workspace:GetChildren()) do
+        if item:IsA("BasePart") and item.Name == "Item" then
+            local box = item:FindFirstChild("ESPBox")
+            if espItemsToggle() then
+                if not box then
+                    createBox(item, Color3.fromRGB(0, 100, 255))
+                end
+            else
+                if box then box:Destroy() end
+            end
+        end
+    end
+end)
